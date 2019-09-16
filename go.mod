@@ -1,4 +1,4 @@
-module github.com/palmads/pdb-log
+module github.com/transsnet/vlog
 
 require (
 	cloud.google.com/go v0.37.4 // indirect
