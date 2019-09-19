@@ -39,18 +39,12 @@ func InitLog(config *LoggerConfig) {
 		panic(err)
 	}
 
-	logLevel := zap.InfoLevel
-
-	if config.Mode == "debug" {
-		logLevel = zap.DebugLevel
-	}
-
 	encoderCfg := zap.NewProductionEncoderConfig()
 	encoderCfg.TimeKey = "ts"
 	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	// 增加几个初始字段
-	additionFields := initAdditionFields(config)
+	additionalFields := initAdditionFields(config)
 
 	// 初始化kafka
 	if config.EnableKafkaLogger {
@@ -72,17 +66,17 @@ func InitLog(config *LoggerConfig) {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
 			zapcore.NewMultiWriteSyncer(kafka.New(config.InfoTopic), w),
-			logLevel,
+			zap.InfoLevel,
 		)
 	} else {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
 			w,
-			logLevel,
+			zap.InfoLevel,
 		)
 	}
 
-	logger := zap.New(core, additionFields)
+	logger := zap.New(core, additionalFields)
 	logInfo = logger.Sugar()
 
 	//log error
@@ -105,11 +99,11 @@ func InitLog(config *LoggerConfig) {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
 			w,
-			logLevel,
+			zap.ErrorLevel,
 		)
 	}
 
-	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionFields)
+	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields)
 	logErr = logger.Sugar()
 
 	// access
@@ -124,26 +118,17 @@ func InitLog(config *LoggerConfig) {
 	core = zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderCfg),
 		w,
-		logLevel,
+		zap.InfoLevel,
 	)
-	logger = zap.New(core, additionFields)
+	logger = zap.New(core, additionalFields)
 	logAccess = logger.Sugar()
 
 }
 
 func initAdditionFields(config *LoggerConfig) zap.Option {
 	additionFields := zap.Fields(zap.String("serviceName", config.ServiceName),
-		zap.String("logPath", config.LogPath),
-		zap.String("logCode", "0"))
+		zap.String("logPath", config.LogPath))
 	return additionFields
-}
-
-func Debug(args ...interface{}) {
-	logInfo.Debug(args)
-}
-
-func Debugf(format string, args ...interface{}) {
-	logInfo.Debugf(format, args...)
 }
 
 func Error(args ...interface{}) {
