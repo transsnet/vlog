@@ -23,7 +23,6 @@ type LoggerConfig struct {
 
 type BaseLoggerConfig struct {
 	LogPath     string
-	Mode        string
 	ServiceName string
 }
 
@@ -103,7 +102,7 @@ func InitLog(config *LoggerConfig) {
 		)
 	}
 
-	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields)
+	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields, zap.AddStacktrace(zap.ErrorLevel))
 	logErr = logger.Sugar()
 
 	// access
