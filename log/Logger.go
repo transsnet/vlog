@@ -87,6 +87,7 @@ func InitLog(config *LoggerConfig) {
 		LocalTime:  false,
 	})
 	encoderCfg.CallerKey = "caller"
+	encoderCfg.StacktraceKey = "stacktrace"
 
 	if config.EnableKafkaLogger {
 		core = zapcore.NewCore(
