@@ -1,12 +1,10 @@
 package kafka
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/panjf2000/ants"
-	"github.com/prometheus/common/log"
+	"log"
 )
 
 const (
@@ -54,7 +52,7 @@ func initKafkaWorkPool(config *WorkerPool) {
 	}
 
 	if config.pool, err = ants.NewTimingPool(config.WorkerSize, config.Timeout); err == nil {
-		fmt.Println("kafka logger worker pool size >>>", config.PoolSize)
+		log.Println("kafka logger worker pool size >>>", config.PoolSize)
 		config.start()
 	} else {
 		log.Fatal(err)
@@ -63,10 +61,12 @@ func initKafkaWorkPool(config *WorkerPool) {
 
 func (workerPool *WorkerPool) start() {
 	workerPool.submitFuncs = make(chan func(), workerPool.PoolSize)
-	fmt.Println(">>WorkerPool start", workerPool.PoolSize, cap(workerPool.submitFuncs))
+	log.Println(">>WorkerPool start", workerPool.PoolSize, cap(workerPool.submitFuncs))
 	go func() {
 		for fun := range workerPool.submitFuncs {
-			workerPool.pool.Submit(fun)
+			if err := workerPool.pool.Submit(fun); err != nil {
+				log.Println(err)
+			}
 		}
 	}()
 }
@@ -77,7 +77,7 @@ func (workerPool *WorkerPool) AsyncSubmit(f func()) {
 
 func initKafkaProducer(client *KafkaClient) {
 
-	fmt.Println("start to init kafka msg queue..")
+	log.Println("start to init kafka msg queue..")
 
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -92,11 +92,11 @@ func initKafkaProducer(client *KafkaClient) {
 	}
 
 	go func(p sarama.AsyncProducer) {
-		errors := p.Errors()
+		_errors := p.Errors()
 		success := p.Successes()
 		for {
 			select {
-			case err := <-errors:
+			case err := <-_errors:
 				if err != nil {
 					log.Fatal("sarama.AsyncProducer error:", err)
 				}
@@ -112,16 +112,10 @@ func initKafkaProducer(client *KafkaClient) {
 	client.asyncProducer = producer
 }
 
-func (kafkaClient *KafkaClient) sendMsg(msg interface{}, topic string) error {
+func (kafkaClient *KafkaClient) sendMsg(msg []byte, topic string) error {
 
-	if msg == nil {
+	if len(msg) == 0 {
 		return nil
-	}
-
-	b, err := toJSONBytes(msg)
-
-	if err != nil {
-		return err
 	}
 
 	if kafkaClient.asyncProducer == nil {
@@ -130,7 +124,7 @@ func (kafkaClient *KafkaClient) sendMsg(msg interface{}, topic string) error {
 
 	producerMsg := &sarama.ProducerMessage{
 		Topic: topic,
-		Value: sarama.ByteEncoder(b),
+		Value: sarama.ByteEncoder(msg),
 	}
 
 	kafkaClient.append2WorkPool(producerMsg)
@@ -141,17 +135,4 @@ func (kafkaClient *KafkaClient) append2WorkPool(producerMsg *sarama.ProducerMess
 	kafkaClient.AsyncSubmit(func() {
 		kafkaClient.asyncProducer.Input() <- producerMsg
 	})
-}
-
-func toJSONBytes(msg interface{}) ([]byte, error) {
-	if msg == nil {
-		return nil, errors.New("message body is empty")
-	}
-
-	b, err := json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	} else {
-		return b, nil
-	}
 }

@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"go.uber.org/zap/zapcore"
+	"log"
 )
 
 func New(topic string) zapcore.WriteSyncer {
@@ -22,7 +23,9 @@ func (logger *kafkaLogger) Sync() error {
 
 func (logger *kafkaLogger) send(p []byte) (n int, err error) {
 	if client != nil {
-		client.sendMsg(string(p), logger.Topic)
+		if err := client.sendMsg(p, logger.Topic); err != nil {
+			log.Println(err)
+		}
 	}
 	return 0, nil
 }
