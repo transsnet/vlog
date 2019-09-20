@@ -2,8 +2,10 @@ package log
 
 import (
 	"github.com/transsnet/vlog/log/kafka"
+	"github.com/transsnet/vlog/log/model"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/go-playground/validator.v9"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 	"strings"
@@ -15,26 +17,22 @@ var (
 	logAccess *zap.SugaredLogger
 )
 
-type LoggerConfig struct {
-	EnableKafkaLogger bool
-	*BaseLoggerConfig
-	*KafkaLoggerConfig
+// 对配置文件进行校验
+func validate(config *model.LoggerConfig) {
+	_validator := validator.New()
+	if err := _validator.Struct(config); err != nil {
+		panic(err)
+	}
 }
 
-type BaseLoggerConfig struct {
-	LogPath     string
-	ServiceName string
-}
+// 初始化日志配置
+func InitLog(config *model.LoggerConfig) {
 
-type KafkaLoggerConfig struct {
-	KafkaClient *kafka.KafkaClient
-	InfoTopic   string
-	ErrorTopic  string
-}
+	// 校验一下，报错就抛出
+	validate(config)
 
-func InitLog(config *LoggerConfig) {
-
-	if err := MakeDir(config.LogPath); err != nil {
+	// 创建日志目录
+	if err := MakeDir(config.Base.LogPath); err != nil {
 		panic(err)
 	}
 
@@ -46,25 +44,25 @@ func InitLog(config *LoggerConfig) {
 	additionalFields := initAdditionFields(config)
 
 	// 初始化kafka
-	if config.EnableKafkaLogger {
-		kafka.InitKafkaClient(config.KafkaClient)
+	if config.EnableKafka {
+		kafka.InitKafkaClient(config.Kafka.Client)
 	}
 
 	var core zapcore.Core
 
-	// log info
+	// 配置一个 log info
 	w := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   strings.Join([]string{config.LogPath, "info.log"}, "/"),
+		Filename:   strings.Join([]string{config.Base.LogPath, "info.log"}, "/"),
 		MaxSize:    500, // megabytes
 		MaxBackups: 30,
 		MaxAge:     30, // days
 		LocalTime:  false,
 	})
 
-	if config.EnableKafkaLogger {
+	if config.EnableKafka {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
-			zapcore.NewMultiWriteSyncer(kafka.New(config.InfoTopic), w),
+			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.InfoTopic), w),
 			zap.InfoLevel,
 		)
 	} else {
@@ -78,9 +76,9 @@ func InitLog(config *LoggerConfig) {
 	logger := zap.New(core, additionalFields)
 	logInfo = logger.Sugar()
 
-	//log error
+	// 配置一个 log error
 	w = zapcore.AddSync(&lumberjack.Logger{
-		Filename:   strings.Join([]string{config.LogPath, "error.log"}, "/"),
+		Filename:   strings.Join([]string{config.Base.LogPath, "error.log"}, "/"),
 		MaxSize:    500,
 		MaxBackups: 30,
 		MaxAge:     30, // days
@@ -89,10 +87,10 @@ func InitLog(config *LoggerConfig) {
 	encoderCfg.CallerKey = "caller"
 	encoderCfg.StacktraceKey = "stacktrace"
 
-	if config.EnableKafkaLogger {
+	if config.EnableKafka {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
-			zapcore.NewMultiWriteSyncer(kafka.New(config.ErrorTopic), w),
+			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic), w),
 			zap.ErrorLevel,
 		)
 	} else {
@@ -106,9 +104,9 @@ func InitLog(config *LoggerConfig) {
 	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields, zap.AddStacktrace(zap.ErrorLevel))
 	logErr = logger.Sugar()
 
-	// access
+	//  配置一个 access
 	w = zapcore.AddSync(&lumberjack.Logger{
-		Filename:   strings.Join([]string{config.LogPath, "access.log"}, "/"),
+		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
 		MaxSize:    500, // megabytes
 		MaxBackups: 30,
 		MaxAge:     30, // days
@@ -125,9 +123,10 @@ func InitLog(config *LoggerConfig) {
 
 }
 
-func initAdditionFields(config *LoggerConfig) zap.Option {
-	additionFields := zap.Fields(zap.String("serviceName", config.ServiceName),
-		zap.String("logPath", config.LogPath))
+// 初始化几个额外的字段
+func initAdditionFields(config *model.LoggerConfig) zap.Option {
+	additionFields := zap.Fields(zap.String("serviceName", config.Base.ServiceName),
+		zap.String("logPath", config.Base.LogPath))
 	return additionFields
 }
 

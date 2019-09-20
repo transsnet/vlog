@@ -14,24 +14,25 @@ const (
 	antsPoolDefaultTimeout    = 4
 )
 
-var client *KafkaClient
+var client *Client
 
+type Client struct {
+	*WorkerPool   `yaml:"worker_pool" validate:"omitempty"`
+	Hosts         []string `yaml:"hosts" validate:"gt=0"`
+	asyncProducer sarama.AsyncProducer
+}
+
+// 其中timeout的单位是秒
 type WorkerPool struct {
-	Name        string
-	WorkerSize  int
-	PoolSize    int64
-	Timeout     int
+	Name        string `yaml:"name" validate:"gt=0"`
+	WorkerSize  int    `yaml:"worker_size" validate:"min=1"`
+	PoolSize    int64  `yaml:"pool_size" validate:"min=100"`
+	Timeout     int    `yaml:"timeout" validate:"min=1"`
 	pool        *ants.Pool
 	submitFuncs chan func()
 }
 
-type KafkaClient struct {
-	*WorkerPool
-	Hosts         []string
-	asyncProducer sarama.AsyncProducer
-}
-
-func InitKafkaClient(c *KafkaClient) {
+func InitKafkaClient(c *Client) {
 	client = c
 	initKafkaWorkPool(client.WorkerPool)
 	initKafkaProducer(client)
@@ -75,7 +76,7 @@ func (workerPool *WorkerPool) AsyncSubmit(f func()) {
 	workerPool.submitFuncs <- f
 }
 
-func initKafkaProducer(client *KafkaClient) {
+func initKafkaProducer(client *Client) {
 
 	log.Println("start to init kafka msg queue..")
 
@@ -98,7 +99,7 @@ func initKafkaProducer(client *KafkaClient) {
 			select {
 			case err := <-_errors:
 				if err != nil {
-					log.Fatal("sarama.AsyncProducer error:", err)
+					log.Println("sarama.AsyncProducer error:", err)
 				}
 			case <-success:
 			}
@@ -112,7 +113,7 @@ func initKafkaProducer(client *KafkaClient) {
 	client.asyncProducer = producer
 }
 
-func (kafkaClient *KafkaClient) sendMsg(msg []byte, topic string) error {
+func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
 
 	if len(msg) == 0 {
 		return nil
@@ -131,7 +132,7 @@ func (kafkaClient *KafkaClient) sendMsg(msg []byte, topic string) error {
 	return nil
 }
 
-func (kafkaClient *KafkaClient) append2WorkPool(producerMsg *sarama.ProducerMessage) {
+func (kafkaClient *Client) append2WorkPool(producerMsg *sarama.ProducerMessage) {
 	kafkaClient.AsyncSubmit(func() {
 		kafkaClient.asyncProducer.Input() <- producerMsg
 	})
