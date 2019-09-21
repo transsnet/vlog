@@ -21,6 +21,7 @@ func (logger *kafkaLogger) Sync() error {
 	return nil
 }
 
+// 实际发送日志到kafka
 func (logger *kafkaLogger) send(p []byte) (n int, err error) {
 	if client != nil {
 		if err := client.sendMsg(p, logger.Topic); err != nil {

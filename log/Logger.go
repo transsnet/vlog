@@ -17,14 +17,6 @@ var (
 	logAccess *zap.SugaredLogger
 )
 
-// 对配置文件进行校验
-func validate(config *model.LoggerConfig) {
-	_validator := validator.New()
-	if err := _validator.Struct(config); err != nil {
-		panic(err)
-	}
-}
-
 // 初始化日志配置
 func InitLog(config *model.LoggerConfig) {
 
@@ -164,4 +156,12 @@ func MakeDir(f string) error {
 		return nil
 	}
 	return os.MkdirAll(f, os.ModePerm)
+}
+
+// 对配置进行校验
+func validate(config *model.LoggerConfig) {
+	_validator := validator.New()
+	if err := _validator.Struct(config); err != nil {
+		panic(err)
+	}
 }

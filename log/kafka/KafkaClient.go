@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	antsPoolDefaultName       = "kafka-work-pool"
 	antsPoolDefaultSize       = 1024 * 1024
 	antsPoolDefaultWorkerSize = 16
 	antsPoolDefaultTimeout    = 4
@@ -24,14 +23,14 @@ type Client struct {
 
 // 其中timeout的单位是秒
 type WorkerPool struct {
-	Name        string `yaml:"name" validate:"gt=0"`
-	WorkerSize  int    `yaml:"worker_size" validate:"min=1"`
-	PoolSize    int64  `yaml:"pool_size" validate:"min=100"`
-	Timeout     int    `yaml:"timeout" validate:"min=1"`
+	WorkerSize  int   `yaml:"worker_size" validate:"min=1"`
+	PoolSize    int64 `yaml:"pool_size" validate:"min=100"`
+	Timeout     int   `yaml:"timeout" validate:"min=1"`
 	pool        *ants.Pool
 	submitFuncs chan func()
 }
 
+//  初始化kafka客户端
 func InitKafkaClient(c *Client) {
 	client = c
 	initKafkaWorkPool(client.WorkerPool)
@@ -40,18 +39,16 @@ func InitKafkaClient(c *Client) {
 
 // 初始化工作线程池
 func initKafkaWorkPool(config *WorkerPool) {
-	var err error
-	if config == nil {
 
+	if config == nil {
 		config = &WorkerPool{
-			Name:       antsPoolDefaultName,
 			WorkerSize: antsPoolDefaultWorkerSize,
 			PoolSize:   antsPoolDefaultSize,
 			Timeout:    antsPoolDefaultTimeout,
 		}
-
 	}
 
+	var err error
 	if config.pool, err = ants.NewTimingPool(config.WorkerSize, config.Timeout); err == nil {
 		log.Println("kafka logger worker pool size >>>", config.PoolSize)
 		config.start()
@@ -60,6 +57,7 @@ func initKafkaWorkPool(config *WorkerPool) {
 	}
 }
 
+// 开启线程池
 func (workerPool *WorkerPool) start() {
 	workerPool.submitFuncs = make(chan func(), workerPool.PoolSize)
 	log.Println(">>WorkerPool start", workerPool.PoolSize, cap(workerPool.submitFuncs))
@@ -72,10 +70,12 @@ func (workerPool *WorkerPool) start() {
 	}()
 }
 
+// 异步提交
 func (workerPool *WorkerPool) AsyncSubmit(f func()) {
 	workerPool.submitFuncs <- f
 }
 
+// 初始化kafka生产者
 func initKafkaProducer(client *Client) {
 
 	log.Println("start to init kafka msg queue..")
@@ -90,6 +90,9 @@ func initKafkaProducer(client *Client) {
 
 	if err != nil {
 		log.Fatal(err, client.Hosts)
+		return
+	} else {
+		client.asyncProducer = producer
 	}
 
 	go func(p sarama.AsyncProducer) {
@@ -104,15 +107,10 @@ func initKafkaProducer(client *Client) {
 			case <-success:
 			}
 		}
-	}(producer)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	client.asyncProducer = producer
+	}(client.asyncProducer)
 }
 
+// 实际发送消息，消息体为json encoded
 func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
 
 	if len(msg) == 0 {

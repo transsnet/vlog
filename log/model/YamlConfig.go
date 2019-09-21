@@ -3,9 +3,9 @@ package model
 import "github.com/transsnet/vlog/log/kafka"
 
 type LoggerConfig struct {
-	EnableKafka bool               `yaml:"enable_kafka, omitempty"`
+	EnableKafka bool               `yaml:"enable_kafka"`
 	Base        *BaseLoggerConfig  `yaml:"base" validate:"required"`
-	Kafka       *KafkaLoggerConfig `yaml:"kafka, omitempty" validate:"omitempty"`
+	Kafka       *KafkaLoggerConfig `yaml:"kafka" validate:"omitempty"`
 }
 
 type BaseLoggerConfig struct {
