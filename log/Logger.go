@@ -42,8 +42,25 @@ func InitLog(config *model.LoggerConfig) {
 
 	var core zapcore.Core
 
+	//  配置一个 access
+	dw := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
+		MaxSize:    500, // megabytes
+		MaxBackups: 30,
+		MaxAge:     30, // days
+		LocalTime:  false,
+	})
+
+	core = zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderCfg),
+		dw,
+		zap.DebugLevel,
+	)
+	dLogger := zap.New(core, additionalFields)
+	logAccess = dLogger.Sugar()
+
 	// 配置一个 log info
-	w := zapcore.AddSync(&lumberjack.Logger{
+	iw := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   strings.Join([]string{config.Base.LogPath, "info.log"}, "/"),
 		MaxSize:    500, // megabytes
 		MaxBackups: 30,
@@ -51,25 +68,17 @@ func InitLog(config *model.LoggerConfig) {
 		LocalTime:  false,
 	})
 
-	if config.EnableKafka {
-		core = zapcore.NewCore(
-			zapcore.NewJSONEncoder(encoderCfg),
-			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.InfoTopic), w),
-			zap.InfoLevel,
-		)
-	} else {
-		core = zapcore.NewCore(
-			zapcore.NewJSONEncoder(encoderCfg),
-			w,
-			zap.InfoLevel,
-		)
-	}
+	core = zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderCfg),
+		iw,
+		zap.InfoLevel,
+	)
 
-	logger := zap.New(core, additionalFields)
-	logInfo = logger.Sugar()
+	iLogger := zap.New(core, additionalFields)
+	logInfo = iLogger.Sugar()
 
 	// 配置一个 log error
-	w = zapcore.AddSync(&lumberjack.Logger{
+	ew := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   strings.Join([]string{config.Base.LogPath, "error.log"}, "/"),
 		MaxSize:    500,
 		MaxBackups: 30,
@@ -82,37 +91,20 @@ func InitLog(config *model.LoggerConfig) {
 	if config.EnableKafka {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
-			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic), w),
+			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic), ew),
 			zap.ErrorLevel,
 		)
 	} else {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
-			w,
+			ew,
 			zap.ErrorLevel,
 		)
 	}
 
-	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields, zap.AddStacktrace(zap.ErrorLevel))
-	logErr = logger.Sugar()
-
-	//  配置一个 access
-	w = zapcore.AddSync(&lumberjack.Logger{
-		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
-		MaxSize:    500, // megabytes
-		MaxBackups: 30,
-		MaxAge:     30, // days
-		LocalTime:  false,
-	})
-
-	core = zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderCfg),
-		w,
-		zap.InfoLevel,
-	)
-	logger = zap.New(core, additionalFields)
-	logAccess = logger.Sugar()
-
+	eLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields, additionalFields,
+		zap.AddStacktrace(zap.ErrorLevel))
+	logErr = eLogger.Sugar()
 }
 
 // 初始化几个额外的字段
@@ -139,11 +131,11 @@ func Infof(format string, args ...interface{}) {
 }
 
 func Access(args ...interface{}) {
-	logAccess.Info(args)
+	logAccess.Debug(args)
 }
 
 func Accessf(format string, args ...interface{}) {
-	logAccess.Infof(format, args...)
+	logAccess.Debugf(format, args...)
 }
 
 func IsFileExist(f string) bool {

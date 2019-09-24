@@ -28,5 +28,5 @@ func (logger *kafkaLogger) send(p []byte) (n int, err error) {
 			log.Println(err)
 		}
 	}
-	return 0, nil
+	return len(p), nil
 }

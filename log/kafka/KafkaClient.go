@@ -85,7 +85,8 @@ func initKafkaProducer(client *Client) {
 	config.Producer.Partitioner = sarama.NewRandomPartitioner
 	config.Producer.Return.Successes = true
 	config.Producer.Retry.Max = 2
-	config.ChannelBufferSize = 10240
+	config.ChannelBufferSize = 1024 * 10
+	config.Version = sarama.V2_0_0_0
 	producer, err := sarama.NewAsyncProducer(client.Hosts, config)
 
 	if err != nil {
@@ -121,9 +122,11 @@ func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
 		return errors.New("produce not init with hosts")
 	}
 
+	// 这里经测试，需要进行内存拷贝才行
+	x := []byte(string(msg))
 	producerMsg := &sarama.ProducerMessage{
 		Topic: topic,
-		Value: sarama.ByteEncoder(msg),
+		Value: sarama.ByteEncoder(x),
 	}
 
 	kafkaClient.append2WorkPool(producerMsg)
