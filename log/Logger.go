@@ -56,7 +56,7 @@ func InitLog(config *model.LoggerConfig) {
 		dw,
 		zap.DebugLevel,
 	)
-	dLogger := zap.New(core, additionalFields)
+	dLogger := zap.New(core)
 	logAccess = dLogger.Sugar()
 
 	// 配置一个 log info
@@ -74,7 +74,7 @@ func InitLog(config *model.LoggerConfig) {
 		zap.InfoLevel,
 	)
 
-	iLogger := zap.New(core, additionalFields)
+	iLogger := zap.New(core)
 	logInfo = iLogger.Sugar()
 
 	// 配置一个 log error
@@ -102,7 +102,7 @@ func InitLog(config *model.LoggerConfig) {
 		)
 	}
 
-	eLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields, additionalFields,
+	eLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields,
 		zap.AddStacktrace(zap.ErrorLevel))
 	logErr = eLogger.Sugar()
 }

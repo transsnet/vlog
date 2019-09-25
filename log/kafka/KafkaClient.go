@@ -50,7 +50,7 @@ func initKafkaWorkPool(config *WorkerPool) {
 
 	var err error
 	if config.pool, err = ants.NewTimingPool(config.WorkerSize, config.Timeout); err == nil {
-		log.Println("kafka logger worker pool size >>>", config.PoolSize)
+		log.Println("Kafka logger worker pool size >>>", config.PoolSize)
 		config.start()
 	} else {
 		log.Fatal(err)
@@ -60,7 +60,7 @@ func initKafkaWorkPool(config *WorkerPool) {
 // 开启线程池
 func (workerPool *WorkerPool) start() {
 	workerPool.submitFuncs = make(chan func(), workerPool.PoolSize)
-	log.Println(">>WorkerPool start", workerPool.PoolSize, cap(workerPool.submitFuncs))
+	log.Println(">>Kafka logger workerpool start", workerPool.PoolSize, cap(workerPool.submitFuncs))
 	go func() {
 		for fun := range workerPool.submitFuncs {
 			if err := workerPool.pool.Submit(fun); err != nil {
@@ -78,7 +78,7 @@ func (workerPool *WorkerPool) AsyncSubmit(f func()) {
 // 初始化kafka生产者
 func initKafkaProducer(client *Client) {
 
-	log.Println("start to init kafka msg queue..")
+	log.Println("Kafka logger start to init kafka msg queue ...")
 
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -103,7 +103,7 @@ func initKafkaProducer(client *Client) {
 			select {
 			case err := <-_errors:
 				if err != nil {
-					log.Println("sarama.AsyncProducer error:", err)
+					log.Println("Kafka logger sarama.AsyncProducer error:", err)
 				}
 			case <-success:
 			}
@@ -119,7 +119,7 @@ func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
 	}
 
 	if kafkaClient.asyncProducer == nil {
-		return errors.New("produce not init with hosts")
+		return errors.New("Kafka logger produce not init with hosts")
 	}
 
 	// 这里经测试，需要进行内存拷贝才行
