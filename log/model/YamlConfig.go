@@ -10,6 +10,7 @@ type LoggerConfig struct {
 
 type BaseLoggerConfig struct {
 	LogPath     string `yaml:"log_path" validate:"gt=0"`
+	LogLevel    string `yaml:"log_level"`
 	ServiceName string `yaml:"service_name" validate:"gt=0"`
 }
 

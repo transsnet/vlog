@@ -41,6 +41,18 @@ func InitLog(config *model.LoggerConfig) {
 	}
 
 	var core zapcore.Core
+	var logLevel zapcore.Level
+
+	switch config.Base.LogLevel {
+	case "debug":
+		logLevel = zap.DebugLevel
+	case "info":
+		logLevel = zap.InfoLevel
+	case "error":
+		logLevel = zap.ErrorLevel
+	default:
+		logLevel = zap.InfoLevel
+	}
 
 	//  配置一个 access
 	dw := zapcore.AddSync(&lumberjack.Logger{
@@ -54,7 +66,7 @@ func InitLog(config *model.LoggerConfig) {
 	core = zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderCfg),
 		dw,
-		zap.DebugLevel,
+		logLevel,
 	)
 	dLogger := zap.New(core)
 	logAccess = dLogger.Sugar()
@@ -71,7 +83,7 @@ func InitLog(config *model.LoggerConfig) {
 	core = zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderCfg),
 		iw,
-		zap.InfoLevel,
+		logLevel,
 	)
 
 	iLogger := zap.New(core)
@@ -92,13 +104,13 @@ func InitLog(config *model.LoggerConfig) {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
 			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic), ew),
-			zap.ErrorLevel,
+			logLevel,
 		)
 	} else {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
 			ew,
-			zap.ErrorLevel,
+			logLevel,
 		)
 	}
 
