@@ -6,6 +6,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/panjf2000/ants"
 	"log"
+	"strings"
 )
 
 const (
@@ -147,7 +148,11 @@ func (kafkaClient *Client) append2WorkPool(producerMsg *sarama.ProducerMessage, 
 				log.Println("Kafka logger filter error when unmarshal msg content", err)
 			} else {
 				for i := range filter {
-					if "["+filter[i]+"]" == mc.Msg {
+					if mc.Msg == "" || filter[i] == "" {
+						continue
+					}
+
+					if "["+filter[i]+"]" == mc.Msg || filter[i] == mc.Msg || strings.Contains(mc.Msg, filter[i]) {
 						needSubmit = false
 						break
 					}
