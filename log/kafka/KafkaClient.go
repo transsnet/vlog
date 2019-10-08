@@ -140,13 +140,14 @@ func (kafkaClient *Client) append2WorkPool(producerMsg *sarama.ProducerMessage, 
 	content string) {
 	kafkaClient.AsyncSubmit(func() {
 		needSubmit := true
+
 		if len(filter) > 0 {
 			var mc MsgContent
 			if err := json.Unmarshal([]byte(content), &mc); err != nil {
 				log.Println("Kafka logger filter error when unmarshal msg content", err)
 			} else {
-				for t := range filter {
-					if "["+filter[t]+"]" == mc.Msg {
+				for i := range filter {
+					if "["+filter[i]+"]" == mc.Msg {
 						needSubmit = false
 						break
 					}
