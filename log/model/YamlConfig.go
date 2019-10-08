@@ -18,4 +18,5 @@ type KafkaLoggerConfig struct {
 	Client     *kafka.Client `yaml:"client" validate:"required"`
 	InfoTopic  string        `yaml:"info_topic" validate:"gt=0"`
 	ErrorTopic string        `yaml:"error_topic" validate:"gt=0"`
+	Filter     []string      `yaml:"filter"`
 }

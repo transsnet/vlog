@@ -103,7 +103,7 @@ func InitLog(config *model.LoggerConfig) {
 	if config.EnableKafka {
 		core = zapcore.NewCore(
 			zapcore.NewJSONEncoder(encoderCfg),
-			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic), ew),
+			zapcore.NewMultiWriteSyncer(kafka.New(config.Kafka.ErrorTopic, config.Kafka.Filter), ew),
 			logLevel,
 		)
 	} else {

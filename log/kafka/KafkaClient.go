@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/Shopify/sarama"
 	"github.com/panjf2000/ants"
@@ -112,7 +113,7 @@ func initKafkaProducer(client *Client) {
 }
 
 // 实际发送消息，消息体为json encoded
-func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
+func (kafkaClient *Client) sendMsg(msg []byte, topic string, filter []string) error {
 
 	if len(msg) == 0 {
 		return nil
@@ -123,18 +124,42 @@ func (kafkaClient *Client) sendMsg(msg []byte, topic string) error {
 	}
 
 	// 这里经测试，需要进行内存拷贝才行
-	x := []byte(string(msg))
+	contentStr := string(msg)
+	contentBytes := []byte(contentStr)
+
 	producerMsg := &sarama.ProducerMessage{
 		Topic: topic,
-		Value: sarama.ByteEncoder(x),
+		Value: sarama.ByteEncoder(contentBytes),
 	}
 
-	kafkaClient.append2WorkPool(producerMsg)
+	kafkaClient.append2WorkPool(producerMsg, filter, contentStr)
 	return nil
 }
 
-func (kafkaClient *Client) append2WorkPool(producerMsg *sarama.ProducerMessage) {
+func (kafkaClient *Client) append2WorkPool(producerMsg *sarama.ProducerMessage, filter []string,
+	content string) {
 	kafkaClient.AsyncSubmit(func() {
-		kafkaClient.asyncProducer.Input() <- producerMsg
+		needSubmit := true
+		if len(filter) > 0 {
+			var mc MsgContent
+			if err := json.Unmarshal([]byte(content), &mc); err != nil {
+				log.Println("Kafka logger filter error when unmarshal msg content", err)
+			} else {
+				for t := range filter {
+					if "["+filter[t]+"]" == mc.Msg {
+						needSubmit = false
+						break
+					}
+				}
+			}
+		}
+
+		if needSubmit {
+			kafkaClient.asyncProducer.Input() <- producerMsg
+		}
 	})
+}
+
+type MsgContent struct {
+	Msg string `json:"msg"`
 }
