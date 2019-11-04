@@ -143,11 +143,11 @@ func Infof(format string, args ...interface{}) {
 }
 
 func Access(args ...interface{}) {
-	logAccess.Debug(args)
+	logAccess.Info(args)
 }
 
 func Accessf(format string, args ...interface{}) {
-	logAccess.Debugf(format, args...)
+	logAccess.Infof(format, args...)
 }
 
 func IsFileExist(f string) bool {
