@@ -58,8 +58,8 @@ func InitLog(config *model.LoggerConfig) {
 	dw := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
 		MaxSize:    500, // megabytes
-		MaxBackups: 30,
-		MaxAge:     30, // days
+		MaxBackups: 15,
+		MaxAge:     7, // days
 		LocalTime:  false,
 	})
 
@@ -75,8 +75,8 @@ func InitLog(config *model.LoggerConfig) {
 	iw := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   strings.Join([]string{config.Base.LogPath, "info.log"}, "/"),
 		MaxSize:    500, // megabytes
-		MaxBackups: 30,
-		MaxAge:     30, // days
+		MaxBackups: 15,
+		MaxAge:     7, // days
 		LocalTime:  false,
 	})
 
@@ -93,8 +93,8 @@ func InitLog(config *model.LoggerConfig) {
 	ew := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   strings.Join([]string{config.Base.LogPath, "error.log"}, "/"),
 		MaxSize:    500,
-		MaxBackups: 30,
-		MaxAge:     30, // days
+		MaxBackups: 15,
+		MaxAge:     7, // days
 		LocalTime:  false,
 	})
 	encoderCfg.CallerKey = "caller"
