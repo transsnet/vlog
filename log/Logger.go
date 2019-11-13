@@ -15,6 +15,7 @@ var (
 	logInfo   *zap.SugaredLogger
 	logErr    *zap.SugaredLogger
 	logAccess *zap.SugaredLogger
+	logDebug  *zap.SugaredLogger
 )
 
 // 初始化日志配置
@@ -54,9 +55,9 @@ func InitLog(config *model.LoggerConfig) {
 		logLevel = zap.InfoLevel
 	}
 
-	//  配置一个 access
+	//  配置一个 debug
 	dw := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
+		Filename:   strings.Join([]string{config.Base.LogPath, "debug.log"}, "/"),
 		MaxSize:    500, // megabytes
 		MaxBackups: 15,
 		MaxAge:     7, // days
@@ -69,7 +70,24 @@ func InitLog(config *model.LoggerConfig) {
 		logLevel,
 	)
 	dLogger := zap.New(core)
-	logAccess = dLogger.Sugar()
+	logDebug = dLogger.Sugar()
+
+	//  配置一个 access
+	aw := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   strings.Join([]string{config.Base.LogPath, "access.log"}, "/"),
+		MaxSize:    500, // megabytes
+		MaxBackups: 15,
+		MaxAge:     7, // days
+		LocalTime:  false,
+	})
+
+	core = zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderCfg),
+		aw,
+		logLevel,
+	)
+	aLogger := zap.New(core)
+	logAccess = aLogger.Sugar()
 
 	// 配置一个 log info
 	iw := zapcore.AddSync(&lumberjack.Logger{
@@ -114,7 +132,7 @@ func InitLog(config *model.LoggerConfig) {
 		)
 	}
 
-	eLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), additionalFields,
+	eLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1+config.Base.CallerSkip), additionalFields,
 		zap.AddStacktrace(zap.ErrorLevel))
 	logErr = eLogger.Sugar()
 }
@@ -148,6 +166,14 @@ func Access(args ...interface{}) {
 
 func Accessf(format string, args ...interface{}) {
 	logAccess.Infof(format, args...)
+}
+
+func Debug(args ...interface{}) {
+	logDebug.Info(args)
+}
+
+func Debugf(format string, args ...interface{}) {
+	logDebug.Infof(format, args...)
 }
 
 func IsFileExist(f string) bool {
