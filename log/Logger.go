@@ -149,7 +149,7 @@ func Error(args ...interface{}) {
 }
 
 func Errorf(format string, args ...interface{}) {
-	logErr.Errorf(format, args)
+	logErr.Errorf(format, args...)
 }
 
 func Info(args ...interface{}) {
